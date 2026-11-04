@@ -175,7 +175,7 @@ Confluence databases take a CSV edit envelope instead of node edits. Tested on 2
 
 ## Testing new edit shapes
 
-Test on a copy, never on the live page. `copyConfluenceContent` (contentId, title, parentContentId) makes a server-side copy that keeps the same IDs. `archiveConfluenceContent` removes it afterwards. Neither is a tool of its own: run them through `executeWrite`, with `cloudId` beside `name` and the rest inside `inputs`, for example `{"name":"copyConfluenceContent","cloudId":"...","inputs":{"contentId":"...","title":"...","parentContentId":"..."}}`.
+Test on a copy, never on the live page. `copyConfluenceContent` (contentId, title, parentContentId) makes a server-side copy that keeps the same IDs. `archiveConfluenceContent` removes it afterwards. If the archive fails (seen on 4 Nov 2026 on a new site: error 500, three times), ask the person to delete the copy from its ••• menu: the connector has no delete. Neither is a tool of its own: run them through `executeWrite`, with `cloudId` beside `name` and the rest inside `inputs`, for example `{"name":"copyConfluenceContent","cloudId":"...","inputs":{"contentId":"...","title":"...","parentContentId":"..."}}`.
 
 ## Tested facts (Confluence Cloud sites, 2 to 4 Nov 2026, Claude and Cursor)
 
