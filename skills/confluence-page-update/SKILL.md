@@ -104,7 +104,7 @@ Confluence keeps every version, so a bad write can be undone. Do not write again
 
 1. Tell them what went wrong, and which version was good: the one from step 1.
 2. A few damaged nodes: with their OK, put each one back with `replaceNode`, using its html from `node FILE ID`, from step 4 on.
-3. Wider damage: ask them to open the page, choose the ••• menu, then Version history, and restore the version from step 1.
+3. Wider damage: with their OK, restore the version from step 1 with `restoreConfluenceContentVersion` through `executeWrite`: `{"name":"restoreConfluenceContentVersion","cloudId":"...","inputs":{"contentId":"PAGE_ID","versionNumber":N,"message":"Undo of version N+1"}}`, where N is the version from step 1. It adds a new latest version with that version's content, so the page goes to N+2. The title stays as it is unless `restoreTitle` is `true`. This operation is in the v2 connector but not yet tested live (4 Nov 2026). If it is missing or refused, ask them to open the page, choose the ••• menu, then Version history, and restore the version from step 1.
 4. Read the page and its draft again as in step 6, and report the result.
 
 ## Known connector issues
