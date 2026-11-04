@@ -1,0 +1,21 @@
+{
+  "name": "workplace-agent-skills",
+  "owner": {
+    "name": "InCoB"
+  },
+  "metadata": {
+    "description": "Agent skills for the tools teams use every day, like Confluence.",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "confluence-page-update",
+      "description": "Edit one line, cell or table row of a Confluence page, instead of sending the whole page back.",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/confluence-page-update"
+      ]
+    }
+  ]
+}
