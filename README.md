@@ -53,7 +53,7 @@ Or as a Claude Code plugin:
 ### What you need
 
 - Atlassian's v2 connector (`https://mcp.atlassian.com/v2/mcp`), on Confluence Cloud. If your agent only has `getConfluencePage` and `updateConfluencePage`, that is the older connector, and the skill will stop and tell you.
-- `python3` where your agent runs commands. Not tested on Windows.
+- `python3` where your agent runs commands, on Mac or Linux.
 
 ### Before you use it on a real page
 

@@ -109,7 +109,7 @@ Confluence keeps every version, so a bad write can be undone. Do not write again
 
 ## Known connector issues
 
-Two open Atlassian bugs, as of 4 Nov 2026. They come from other people's reports: this skill's tests did not cover them. Every write goes through a whole-page conversion, so even one `replaceNode` can change nodes you did not target:
+Two open Atlassian bugs, as of 4 Nov 2026. Every write goes through a whole-page conversion, so even one `replaceNode` can change nodes you did not target:
 
 - [Issue 269](https://github.com/atlassian/atlassian-mcp-server/issues/269): tables with the layout `align-start` or `center` lose it, so left-aligned tables become centred, and `setAttrs` does not bring it back. Non-breaking spaces become plain spaces.
 - [Issue 270](https://github.com/atlassian/atlassian-mcp-server/issues/270): fragment links can change on a large page.
@@ -147,7 +147,7 @@ A write to the draft alone: `updateConfluenceContent` with `draft: true` and the
 4. Dry run first (`dryRun: true`), check the result, then write. The answer says status "draft" and gives a new `d1:` token.
 5. Read the draft again: `textdiff FILE DRAFT2` must say "same text". Read the page too: its version must not have changed.
 
-If most of the page differs, for example an old page sitting in the draft, stop and say so: that needs a whole-body draft write, which is untested.
+If most of the page differs, for example an old page sitting in the draft, stop and say so: that needs a whole-body draft write, which this skill does not cover.
 
 ## Rename or move a page
 
