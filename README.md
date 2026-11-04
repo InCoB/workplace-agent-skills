@@ -66,7 +66,7 @@ Atlassian's connector can change more than the edit itself. Two open bugs report
 - [#269](https://github.com/atlassian/atlassian-mcp-server/issues/269): left-aligned and centred tables lose their layout, and non-breaking spaces become plain spaces.
 - [#270](https://github.com/atlassian/atlassian-mcp-server/issues/270): fragment links can change on a large page.
 
-The skill checks for these before the first write and asks you first. If a write still changes too much, it tells you, and you can restore the old version from the page's version history.
+The skill checks for these before the first write and asks you first. If a write still changes too much, it tells you and, with your OK, restores the old version.
 
 ## License
 

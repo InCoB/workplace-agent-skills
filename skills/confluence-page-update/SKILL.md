@@ -43,6 +43,8 @@ Call `getConfluenceContent` with `content_format: "html"` and `detail: "full"`. 
 
 `meta FILE` gives the version and the snapshotToken (`v:N`). Keep both.
 
+The read's `metadata.hasSpaceInstructions` says whether the space has authoring instructions. If it is `true`, read them once with `getConfluenceSpace` through `executeRead` (`spaceIdOrKey`) and follow them: the connector requires this before any write.
+
 `risks FILE` lists what Atlassian's open bugs can change across the whole page on any write (see "Known connector issues"). If it lists anything, tell the person what could change and ask before the first write, unless the run's own instructions already decide it.
 
 **Before the first write of a run, check the draft.** Every page has one hidden shared draft: the editor's live session (see "Drafts" below). Read the page a second time with `draft: true` (DRAFT). `textdiff FILE DRAFT` must say "same text". Use `textdiff`, not `diff`: the draft carries its own IDs, so `diff` reports every node as removed and added even when the text is identical. For a page that came back inline, read both as markdown (`content_format: "markdown"`, a quarter to a half of the size, no IDs) and compare the two texts.
@@ -66,10 +68,14 @@ If the text differs before you have written anything, the draft may hold someone
 
 Call `updateConfluenceContent` with `cloudId`, `contentId`, the `snapshotToken` from step 1 (the `v:` one, never the draft's `d1:` one), the `edits` array, and `dryRun: true`. One call may carry several operations: they apply together and make one new version.
 
+Atlassian's tool description says to edit classic pages from the draft with its `d1:` token. Do not: a publish sent with the `d1:` token publishes the whole draft, including anyone's unpublished work (tested 4 Nov 2026). Both tokens pass a dry run, so the dry run does not catch this.
+
+For the html of new nodes, the connector's guide is `getContentFormatGuide` through `executeRead` with toolName `updateConfluencePage`.
+
 Operations, all tested on a copy of a large page on 2 Nov 2026:
 
 - **Replace a line or one cell:** `{"name":"replaceNode","arguments":{"localId":"ID","value":"<p data-local-id=\"ID\">...</p>"}}`. The value is the node html from step 3 with only the intended change. Keep its ID, its marks (strong, code) and any IDs inside it. For one cell, target the paragraph inside that cell.
-- **Add a row after or before another:** `{"name":"insertNodeAfter","arguments":{"localId":"ROW_ID","value":"<tr><td><p>KEY</p></td>...</tr>"}}`, or the same with `insertNodeBefore`. One cell per column. Put no IDs on new nodes: the server assigns them.
+- **Add a row after or before another:** `{"name":"insertNodeAfter","arguments":{"localId":"ROW_ID","value":"<tr><td><p>KEY</p></td>...</tr>"}}`, or the same with `insertNodeBefore`. One cell per column. Put no IDs on new nodes: the server assigns them. The dry run shows the new cells without `data-colwidth`; the write copies the column widths in (tested 4 Nov 2026).
 - **Add a paragraph at the very end of the page:** `{"name":"appendNodeToEnd","arguments":{"value":"<p>...</p>"}}`.
 - **Delete one node:** `{"name":"deleteNode","arguments":{"localId":"ID"}}`.
 - **Delete several nodes:** `{"name":"removeNodes","arguments":{"localIds":["ID1","ID2"]}}`.
@@ -104,15 +110,15 @@ Confluence keeps every version, so a bad write can be undone. Do not write again
 
 1. Tell them what went wrong, and which version was good: the one from step 1.
 2. A few damaged nodes: with their OK, put each one back with `replaceNode`, using its html from `node FILE ID`, from step 4 on.
-3. Wider damage: with their OK, restore the version from step 1 with `restoreConfluenceContentVersion` through `executeWrite`: `{"name":"restoreConfluenceContentVersion","cloudId":"...","inputs":{"contentId":"PAGE_ID","versionNumber":N,"message":"Undo of version N+1"}}`, where N is the version from step 1. It adds a new latest version with that version's content, so the page goes to N+2. The title stays as it is unless `restoreTitle` is `true`. This operation is in the v2 connector but not yet tested live (4 Nov 2026). If it is missing or refused, ask them to open the page, choose the ••• menu, then Version history, and restore the version from step 1.
+3. Wider damage: with their OK, restore the version from step 1 with `restoreConfluenceContentVersion` through `executeWrite`: `{"name":"restoreConfluenceContentVersion","cloudId":"...","inputs":{"contentId":"PAGE_ID","versionNumber":N,"message":"Undo of version N+1"}}`, where N is the version from step 1. It adds a new latest version with that version's content, so the page goes to N+2. The title stays as it is unless `restoreTitle` is `true`. Tested 4 Nov 2026: the text came back exactly and the draft was rebuilt to match, but a fragment link came back in another stored form (see "Known connector issues"). If the operation is missing or refused, ask them to open the page, choose the ••• menu, then Version history, and restore the version from step 1.
 4. Read the page and its draft again as in step 6, and report the result.
 
 ## Known connector issues
 
 Two open Atlassian bugs, as of 4 Nov 2026. Every write goes through a whole-page conversion, so even one `replaceNode` can change nodes you did not target:
 
-- [Issue 269](https://github.com/atlassian/atlassian-mcp-server/issues/269): tables with the layout `align-start` or `center` lose it, so left-aligned tables become centred, and `setAttrs` does not bring it back. Non-breaking spaces become plain spaces.
-- [Issue 270](https://github.com/atlassian/atlassian-mcp-server/issues/270): fragment links can change on a large page.
+- [Issue 269](https://github.com/atlassian/atlassian-mcp-server/issues/269): tables with the layout `align-start` or `center` lose it, so left-aligned tables become centred, and `setAttrs` does not bring it back. Non-breaking spaces become plain spaces. The connector cannot make such a table either: on create it drops the layout, and `setAttrs` with `align-start` answers ok without a new version (tested 4 Nov 2026).
+- [Issue 270](https://github.com/atlassian/atlassian-mcp-server/issues/270): fragment links can change on a large page. Also seen on a small page (4 Nov 2026): a publish that went through the draft, and a version restore, each changed a stored link from the page's full URL plus `#Details` to `#Details`. The html read shows `#Details` both times, so it hides the change. `diffConfluenceContentVersions` through `executeRead` (`contentId`, `from_version`, `to_version`, `content_format: "html"`) shows it, but it returns both versions in full: use it on small pages only.
 
 `risks FILE` finds these before a write. In `diff` they show as `format` lines on nodes you did not touch. At step 4, stop and tell the person. At step 6 the write has landed: report them and offer "Undo a write".
 
@@ -120,7 +126,7 @@ Two open Atlassian bugs, as of 4 Nov 2026. Every write goes through a whole-page
 
 A small page comes back inline, so there is no FILE for the script. Never retype a result into a file to get one. Follow the same steps and do the checks by reading:
 
-- Step 1: take the version and token from the result. In place of `risks`, look in the html for `data-layout="align-start"`, `data-layout="center"`, `&nbsp;` and `href="#`.
+- Step 1: take the version and token from the result. In place of `risks`, look in the html for `data-layout="align-start"`, `data-layout="center"`, `&nbsp;` and `href="#`. A normal read prints a non-breaking space as a character that looks like a plain space; the dry run in step 4 writes it as `&nbsp;`, so look there too.
 - Step 3: find the node and its ID in the html.
 - Steps 4 and 6: compare the old and new html node by node. Only the intended node may differ, in its text, marks or attributes. Check that images, dividers and cards are all still there.
 - The draft: compare markdown reads, as in step 1.
@@ -171,12 +177,12 @@ Confluence databases take a CSV edit envelope instead of node edits. Tested on 2
 
 Test on a copy, never on the live page. `copyConfluenceContent` (contentId, title, parentContentId) makes a server-side copy that keeps the same IDs. `archiveConfluenceContent` removes it afterwards. Neither is a tool of its own: run them through `executeWrite`, with `cloudId` beside `name` and the rest inside `inputs`, for example `{"name":"copyConfluenceContent","cloudId":"...","inputs":{"contentId":"...","title":"...","parentContentId":"..."}}`.
 
-## Tested facts (a Confluence Cloud site, 2 and 3 Nov 2026, Claude and Cursor)
+## Tested facts (Confluence Cloud sites, 2 to 4 Nov 2026, Claude and Cursor)
 
 - The test page's html: 127,834 characters, of which 82,097 are 1,549 ID labels.
 - Both platforms save large reads and dry runs to a file, and return small results inline.
 - Existing nodes carry 36-character UUID IDs. Nodes added later get 12-character IDs. Both work as targets.
-- A normal read gives a `v:N` token; a `draft: true` read gives status "draft" and a `d1:N` token. Edits sent with the `v:` token change the published page; edits sent with `draft: true` and the `d1:` token change only the draft.
+- A normal read gives a `v:N` token; a `draft: true` read gives status "draft" and a `d1:N` token. Edits sent with the `v:` token change the published page; edits sent with `draft: true` and the `d1:` token change only the draft. Edits sent with the `d1:` token and no `draft` publish the whole draft, and the answer then carries a `d1:` token, not `v:`.
 - A markdown read is a quarter to a half of the html read and has no IDs: enough for checking text.
 - `executeRead` with `name: "getConfluenceContent"` takes `responseFields` (for example `["snapshotToken","metadata.version"]`), which gives a version or token check without the body.
 - A title already used in the space gets " (2)" added on create. `copyConfluenceContent` takes an explicit title.
@@ -184,4 +190,4 @@ Test on a copy, never on the live page. `copyConfluenceContent` (contentId, titl
 
 ## Versions
 
-- 1.00 (4 Nov 2026): first public version. Built and tested on 2 and 3 Nov 2026, in Claude and in Cursor.
+- 1.00 (4 Nov 2026): first public version. Built and tested on 2 and 3 Nov 2026, in Claude and in Cursor. Undo by version restore, the token rule and the connector's own rules checked live on 4 Nov 2026.
