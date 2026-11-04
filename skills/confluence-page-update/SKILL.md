@@ -47,9 +47,9 @@ The read's `metadata.hasSpaceInstructions` says whether the space has authoring 
 
 `risks FILE` lists what Atlassian's open bugs can change across the whole page on any write (see "Known connector issues"). If it lists anything, tell the person what could change and ask before the first write, unless the run's own instructions already decide it.
 
-**Before the first write of a run, check the draft.** Every page has one hidden shared draft: the editor's live session (see "Drafts" below). Read the page a second time with `draft: true` (DRAFT). `textdiff FILE DRAFT` must say "same text". Use `textdiff`, not `diff`: the draft carries its own IDs, so `diff` reports every node as removed and added even when the text is identical. For a page that came back inline, read both as markdown (`content_format: "markdown"`, a quarter to a half of the size, no IDs) and compare the two texts.
+**Before the first write of a run, check the draft.** Every page has one hidden shared draft: the editor's live session (see "Drafts" below). Read the page a second time with `draft: true` (DRAFT). `textdiff FILE DRAFT` must say "same text". Use `textdiff`, not `diff`: the draft can carry its own IDs, and then `diff` reports every node as removed and added even when the text is identical. For a page that came back inline, read both as markdown (`content_format: "markdown"`, a quarter to a half of the size, no IDs) and compare the two texts.
 
-If the text differs before you have written anything, the draft may hold someone's unpublished work. Stop and ask the person before writing, even if they asked you to save: say what differs and let them decide. Do not give the draft's age: reading it resets its `createdAt` (see "Drafts"). If they want the published text kept, fix the draft yourself (see "Fix a draft"); never send them to the editor to discard it.
+If the text differs before you have written anything, the draft may hold someone's unpublished work. Stop and ask the person before writing, even if they asked you to save: say what differs and let them decide. Do not give the draft's age: its `createdAt` can be the moment of your own read (see "Drafts"). If they want the published text kept, fix the draft yourself (see "Fix a draft"); never send them to the editor to discard it.
 
 ## Step 2: look
 
@@ -117,16 +117,16 @@ Confluence keeps every version, so a bad write can be undone. Do not write again
 
 Two open Atlassian bugs, as of 4 Nov 2026. Every write goes through a whole-page conversion, so even one `replaceNode` can change nodes you did not target:
 
-- [Issue 269](https://github.com/atlassian/atlassian-mcp-server/issues/269): tables with the layout `align-start` or `center` lose it, so left-aligned tables become centred, and `setAttrs` does not bring it back. Non-breaking spaces become plain spaces. The connector cannot make such a table either: on create it drops the layout, and `setAttrs` with `align-start` answers ok without a new version (tested 4 Nov 2026). Reproduced for `center` on 4 Nov 2026: a `replaceNode` on a paragraph dropped the layout of a table centred in the editor. The dry run still showed the layout, so only the step 6 read-back catches it. A version restore brought the layout back.
+- [Issue 269](https://github.com/atlassian/atlassian-mcp-server/issues/269): tables with the layout `align-start` or `center` lose it, so left-aligned tables become centred, and `setAttrs` does not bring it back. The issue also reports non-breaking spaces becoming plain spaces, but they survived writes and a restore on 4 Nov 2026; `diff` shows it as `format` if it happens. The connector cannot make such a table either: on create it drops the layout, and `setAttrs` with `align-start` answers ok without a new version (tested 4 Nov 2026). Reproduced for `center` on 4 Nov 2026: a `replaceNode` on a paragraph dropped the layout of a table centred in the editor. The dry run still showed the layout, so only the step 6 read-back catches it. A version restore brought the layout back.
 - [Issue 270](https://github.com/atlassian/atlassian-mcp-server/issues/270): fragment links can change on a large page. Also seen on a small page (4 Nov 2026): a publish through the draft, a version restore and one of two plain `v:` writes each changed a stored link from the page's full URL plus `#Details` to `#Details`. The html read shows `#Details` both times, so it hides the change. `diffConfluenceContentVersions` through `executeRead` (`contentId`, `from_version`, `to_version`, `content_format: "html"`) shows it, but it returns both versions in full: use it on small pages only.
 
-`risks FILE` finds these before a write. In `diff` they show as `format` lines on nodes you did not touch. At step 4, stop and tell the person. At step 6 the write has landed: report them and offer "Undo a write".
+`risks FILE` finds these tables and links before a write. A lost layout shows in `diff` as `format` on a table you did not touch. At step 4, stop and tell the person. At step 6 the write has landed: report it and offer "Undo a write".
 
 ## Small pages
 
 A small page comes back inline, so there is no FILE for the script. Never retype a result into a file to get one. Follow the same steps and do the checks by reading:
 
-- Step 1: take the version and token from the result. In place of `risks`, look in the html for `data-layout="align-start"`, `data-layout="center"`, `&nbsp;` and `href="#`. A normal read prints a non-breaking space as a character that looks like a plain space; the dry run in step 4 writes it as `&nbsp;`, so look there too.
+- Step 1: take the version and token from the result. In place of `risks`, look in the html for `data-layout="align-start"`, `data-layout="center"` and `href="#`.
 - Step 3: find the node and its ID in the html.
 - Steps 4 and 6: compare the old and new html node by node. Only the intended node may differ, in its text, marks or attributes. Check that images, dividers and cards are all still there.
 - The draft: compare markdown reads, as in step 1.
@@ -181,7 +181,7 @@ Test on a copy, never on the live page. `copyConfluenceContent` (contentId, titl
 
 - The test page's html: 127,834 characters, of which 82,097 are 1,549 ID labels.
 - Both platforms save large reads and dry runs to a file, and return small results inline.
-- Existing nodes carry 36-character UUID IDs. Nodes added later get 12-character IDs. Both work as targets.
+- Existing nodes carry 36-character UUID IDs. Nodes added later get 12-character IDs. Both work as targets. An ID can go: an image's `figure` lost its ID after a write, so take IDs from the latest read.
 - A normal read gives a `v:N` token; a `draft: true` read gives status "draft" and a `d1:N` token. Edits sent with the `v:` token change the published page; edits sent with `draft: true` and the `d1:` token change only the draft. Edits sent with the `d1:` token and no `draft` publish the whole draft, and the answer then carries a `d1:` token, not `v:`.
 - A markdown read is a quarter to a half of the html read and has no IDs: enough for checking text.
 - `executeRead` with `name: "getConfluenceContent"` takes `responseFields` (for example `["snapshotToken","metadata.version"]`), which gives a version or token check without the body.

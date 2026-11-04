@@ -15,7 +15,7 @@
                                       marks and attributes: for a page against its draft, whose
                                       IDs are different ("same text" when they match)
   page_view.py risks FILE             what Atlassian's open bugs can change on any write: tables
-                                      with a left or centre layout, non-breaking spaces, fragment links
+                                      with a left or centre layout, fragment links
 
 FILE is the html body, or the tool's saved JSON response that contains it.
 Exit codes: 0 ok, 1 usage, 2 key, ID or section not found (or ambiguous), 3 the file is missing or holds no page.
@@ -259,11 +259,12 @@ def items(blocks):
 
 
 def cell_key(cell):
-    """A first cell without its link: "ABC-2 (https://...)" gives ABC-2, a bare smart link its URL's last part."""
+    """A first cell without its link: "ABC-2 (https://...)" gives ABC-2; a smart link, whose text is its URL, the URL's last part."""
     m = re.fullmatch(r"(.*?)\s*\((\S+)\)", cell)
     if not m:
         return cell
-    return m.group(1) or re.split(r"[?#]", m.group(2))[0].rstrip("/").rsplit("/", 1)[-1]
+    text, url = m.groups()
+    return text if text and text != url else re.split(r"[?#]", url)[0].rstrip("/").rsplit("/", 1)[-1]
 
 
 def node_html(html, lid):
@@ -341,7 +342,6 @@ def marks(html):
 
 def risks(html):
     counts = ((len(re.findall(r'<table\b[^>]*\bdata-layout="(?:align-start|center)"', html)), "table(s) with a left or centre layout"),
-              (len(re.findall("&nbsp;|&#160;|&#[xX][aA]0;|\u00a0", html)), "non-breaking space(s)"),
               (len(re.findall(r'<a\b[^>]*\bhref="#', html)), "fragment link(s)"))
     return [f"{n}\t{what}" for n, what in counts if n]
 
