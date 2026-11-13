@@ -9,12 +9,12 @@
   },
   "plugins": [
     {
-      "name": "confluence-page-update",
-      "description": "Edit one line, cell or table row of a Confluence page, instead of sending the whole page back.",
+      "name": "confluence-pro",
+      "description": "Edit one line, cell or table row of a Confluence page instead of sending the whole page back, and read or set who can view or edit it.",
       "source": "./",
       "strict": false,
       "skills": [
-        "./skills/confluence-page-update"
+        "./skills/confluence-pro"
       ]
     }
   ]

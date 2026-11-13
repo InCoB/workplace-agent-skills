@@ -1,11 +1,11 @@
 ---
-name: "confluence-page-update"
-description: "Use for every update of an existing Confluence page or database through Atlassian's v2 connector (Rovo MCP), in Claude, Cursor or another agent: edits, renames and moves, without rewriting the whole page. Edits by node with page_view.py and the snapshotToken, dry run first, then re-read the page and its draft, and fix the draft if the write damaged it."
+name: "confluence-pro"
+description: "Use for every change to existing Confluence content and its access through Atlassian's v2 connector (Rovo MCP), in Claude, Cursor or another agent: edit a page without rewriting it (add a table row, change a cell), rename or move a page, and read or set who can view or edit a page or folder (restrictions). Edits by node with page_view.py and the snapshotToken, dry run first, then re-read the page and its draft."
 ---
 
-# confluence-page-update
+# confluence-pro
 
-**Version 1.00** (4 Nov 2026). Works in Claude and in Cursor; where they differ, the step says so. `scripts/page_view.py` carries the same version, and step 0 checks that they match.
+**Version 1.01** (13 Nov 2026). Formerly `confluence-page-update`. Works in Claude and in Cursor; where they differ, the step says so. `scripts/page_view.py` carries the same version, and step 0 checks that they match.
 
 How to change a Confluence page without rewriting the whole page and without loading its full html into the conversation. Built on a large page (127,834 characters of html, 64% of it ID labels), and it works for any page.
 
@@ -31,9 +31,9 @@ cp "$S/scripts/page_view.py" "$D/page_view.py"
 python3 -I "$D/page_view.py"; echo "exit $?"
 ```
 
-The last line must print the usage text, which starts with `page_view.py 1.00`, and `exit 1`. That proves the script is intact and matches this version. Any other version number means an old copy: stop and ask the person to install the skill again.
+The last line must print the usage text, which starts with `page_view.py 1.01`, and `exit 1`. That proves the script is intact and matches this version. Any other version number means an old copy: stop and ask the person to install the skill again.
 
-3. If the skill's folder is not known, search for this file. Linux (Claude): `find / -path /proc -prune -o -name SKILL.md -path '*confluence-page-update*' -print 2>/dev/null | head -1`. Mac (Cursor): `find ~ /tmp -name SKILL.md -path '*confluence-page-update*' 2>/dev/null | head -1`. Its folder is `S`. If the script is not on disk, stop and ask the person to install the skill again.
+3. If the skill's folder is not known, search for this file. Linux (Claude): `find / -path /proc -prune -o -name SKILL.md -path '*confluence-pro*' -print 2>/dev/null | head -1`. Mac (Cursor): `find ~ /tmp -name SKILL.md -path '*confluence-pro*' 2>/dev/null | head -1`. Its folder is `S`. If the script is not on disk, stop and ask the person to install the skill again.
 
 Run every command as `python3 -I "$D/page_view.py" COMMAND ...`.
 
@@ -61,6 +61,8 @@ If the text differs before you have written anything, the draft may hold someone
 - `ids FILE KEY [KEY...]` finds table rows by their first cell (for example a ticket key, also when it is a link or smart link) and lines by their text. A heading also gives the line under it.
 - For a list item, `ids` gives the item's ID and, after it, `paragraph inside: ID`. Replace the paragraph, not the item.
 - `ids FILE :first` and `ids FILE :last` give a table's first and last data row (a row of `<th>` cells is skipped; a table without one has no header to skip, so check the cell it shows), with its first cell, so a new row can go after the last one without knowing its key. A page with more than one table gives one hit per table and exit 2: pick by looking.
+- **A table with no data rows yet** (only its header): `:first` and `:last` give the header row, marked "header row, table empty: insert after it". `insertNodeAfter` on it adds the first data row; the published page then holds it as an ordinary row under the header (tested 13 Nov 2026).
+- **A page with several tables:** every `:first` or `:last` hit names the heading the table sits under. `:last@Heading` (for example `:last@Changes`, case does not matter) gives only the table under that heading, with exit 0.
 - Exit 2 means not found or ambiguous: stop and look. Never guess an ID.
 - `node FILE ID` prints a node's exact html (one paragraph on the test page: 1,137 characters). For a row, it also shows the IDs of the paragraph inside each cell, so one cell can be edited on its own. Never `node` a whole large table: the test page's main table was 94,577 characters.
 
@@ -163,6 +165,40 @@ Tested 3 Nov 2026 on two test pages.
 - **Move in the page tree, or change the order of child pages:** `moveConfluenceContent` through `executeWrite`: `{"name":"moveConfluenceContent","cloudId":"...","inputs":{"id":"PAGE_ID","position":"before","targetId":"SIBLING_ID"}}`. `position` is `before` or `after` a sibling, or `append` to put it under a new parent. It makes no new version. Check the order with `getConfluenceContentDescendants` through `executeRead` (`contentId` the parent, `depth` 1): children come back in order with their `childPosition`.
 - Plain links on other pages keep the old title as their text. When asked, find them with `view` and change the link text with `replaceNode`.
 
+## Restrictions: who can view or edit
+
+General access is one state per page or folder; Specific access is the list of grants. Both are read and set through the execute tools, with `cloudId` beside `name` and the rest inside `inputs`.
+
+| State | Means |
+|---|---|
+| `OPEN` | everyone with space access can view and edit |
+| `EDIT_RESTRICTED` | everyone with space access can view; only grantees with `update` can edit |
+| `VIEW_RESTRICTED` | only grantees can view (`read`) or view and edit (`update`) |
+
+**Read** (`executeRead`, answers at once, also for content made a moment ago):
+- `getConfluenceContentRestrictionState` with `contentId`: the state.
+- `getConfluenceContentPermissions` with `contentId`: the grants, each `operation` (`read` or `update`) and a principal (`user` with an Atlassian account ID, or `group` with a group ID). It gives IDs, never names: compare with known account IDs, never with names or emails.
+- A grant alone proves nothing: a page created through the connector carries an `update` grant for its creator while its state is still `OPEN` (seen 13 Nov 2026). The state decides who is shut out.
+- A CQL search with expand `content.restrictions.read.restrictions.user,content.restrictions.update.restrictions.user` also shows grants, but may not find content made a moment ago.
+
+**Set "only these people can edit":**
+1. `addConfluenceContentPermissions` (`executeWrite`): `permissions: [{"operation":"update","principals":[{"principalType":"user","principalId":"<account ID>"}]}]`, one principal per editor, yourself included.
+2. `setConfluenceContentRestrictionState` (`executeDestructive`): `state: "EDIT_RESTRICTED"`.
+
+The order matters: leaving `OPEN` without your own `update` grant is refused (self-lockout).
+
+**Set "only these people can view":** grants first (`read` for viewers, `update` for editors, never one person under both), then `VIEW_RESTRICTED`. On create, `private: true` does both for the creator alone.
+
+**Change or remove:** `replaceConfluenceContentPermissions` replaces the whole list (`executeDestructive`), so list yourself with `update`; `removeConfluenceContentPermissions` with no filter clears every grant. Neither changes the state.
+
+**A folder and the pages in it:** in Confluence a view restriction on a folder or page also limits everything below it; an edit restriction does not pass down. The child's own state still reads `OPEN`, so to check who can open a page, also read the state of each ancestor (`getConfluenceContentAncestors`). Not yet tested here.
+
+**Check that it took effect:** read the state and the grants again. The state must be the one you set, and the grants exactly the list you meant, nobody more. Only then say the content is restricted.
+
+**A site or space that does not allow restrictions** (seen 13 Nov 2026 on a site, most likely on the Free plan): `addConfluenceContentPermissions` and `setConfluenceContentRestrictionState` answer 404 "User must have permissions to update restrictions", and a create with `private: true` answers `permission_denied`, "Caller lacks write permission on the parent", although the same create without `private` works. Stop and tell the person; never report the content as restricted.
+
+Tested 13 Nov 2026: the reads, and both refusals above. Setting a restriction is not yet tested on a site that allows it.
+
 ## Databases
 
 Confluence databases take a CSV edit envelope instead of node edits. Tested on 2 Nov 2026:
@@ -185,9 +221,12 @@ Test on a copy, never on the live page. `copyConfluenceContent` (contentId, titl
 - A normal read gives a `v:N` token; a `draft: true` read gives status "draft" and a `d1:N` token. Edits sent with the `v:` token change the published page; edits sent with `draft: true` and the `d1:` token change only the draft. Edits sent with the `d1:` token and no `draft` publish the whole draft, and the answer then carries a `d1:` token, not `v:`.
 - A markdown read is a quarter to a half of the html read and has no IDs: enough for checking text.
 - `executeRead` with `name: "getConfluenceContent"` takes `responseFields` (for example `["snapshotToken","metadata.version"]`), which gives a version or token check without the body.
+- A row added by `insertNodeAfter` gets a different ID in the saved page than in the dry run (13 Nov 2026): take IDs from a read after the write.
 - A title already used in the space gets " (2)" added on create. `copyConfluenceContent` takes an explicit title.
 - page_view.py takes 0.03 to 0.5 seconds a command: 0.03 to 0.10 in Claude, 0.1 to 0.5 on a Mac in Cursor. A Confluence call takes 4 to 13 seconds.
 
 ## Versions
+
+- 1.01 (13 Nov 2026): renamed from `confluence-page-update`. Restrictions section (reads and refusals tested; setting not yet tested). `:first` and `:last` give an empty table's header row, name the heading above each table, and take `@Heading`.
 
 - 1.00 (4 Nov 2026): first public version. Built and tested on 2 and 3 Nov 2026, in Claude and in Cursor. Undo by version restore, the token rule and the connector's own rules checked live on 4 Nov 2026.

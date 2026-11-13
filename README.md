@@ -6,9 +6,11 @@ Agent skills for the tools teams use every day, like Confluence. Each one tested
 
 | Skill | Version | What it does |
 | --- | --- | --- |
-| [confluence-page-update](#confluence-page-update) | 1.00 | Edits one line, cell or table row of a Confluence page, instead of sending the whole page back. |
+| [confluence-pro](#confluence-pro) | 1.01 | Edits one line, cell or table row of a Confluence page instead of sending the whole page back, and reads or sets who can view or edit it. |
 
-## confluence-page-update
+## confluence-pro
+
+Formerly `confluence-page-update` (1.00).
 
 Your AI agent can change one line, one cell or one table row of a Confluence page. The guide that Atlassian's connector gives the agent only shows how to rewrite the whole page. On a big page that breaks, and you can't put it on autopilot. This skill teaches the agent the small, safe edit.
 
@@ -21,11 +23,13 @@ Your AI agent can change one line, one cell or one table row of a Confluence pag
 - If someone edited the page in the meantime, Confluence refuses the update instead of overwriting their work.
 - Checks the page's hidden draft before writing, and fixes it if a write damaged it.
 - A small Python script reads the saved page for the agent, so the agent reads under 1% of a large page. Standard library only, no network, writes nothing.
+- Reads and sets restrictions: who can view or edit a page or folder, checked again after every change.
+- Adds the first row to an empty table, and picks a table by the heading above it.
 - Also covers renaming and moving pages, and Confluence databases.
 
 ### Install: no technical skills needed
 
-1. Download [`confluence-page-update-1.00.zip`](https://github.com/InCoB/workplace-agent-skills/releases/download/v1.00/confluence-page-update-1.00.zip).
+1. Download [`confluence-pro-1.01.zip`](https://github.com/InCoB/workplace-agent-skills/releases/download/v1.01/confluence-pro-1.01.zip).
 2. Give the zip to Claude or Cursor and ask:
 
    > Check this skill for security. If it is safe, install it for me.
@@ -40,14 +44,14 @@ Your AI agent can change one line, one cell or one table row of a Confluence pag
 One command, for Claude Code, Cursor and other agents (needs Node.js):
 
 ```bash
-npx skills add InCoB/workplace-agent-skills --skill confluence-page-update
+npx skills add InCoB/workplace-agent-skills --skill confluence-pro
 ```
 
 Or as a Claude Code plugin:
 
 ```text
 /plugin marketplace add InCoB/workplace-agent-skills
-/plugin install confluence-page-update@workplace-agent-skills
+/plugin install confluence-pro@workplace-agent-skills
 ```
 
 ### What you need
