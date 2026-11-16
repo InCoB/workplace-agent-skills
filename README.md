@@ -6,7 +6,7 @@ Agent skills for the tools teams use every day, like Confluence. Each one tested
 
 | Skill | Version | What it does |
 | --- | --- | --- |
-| [confluence-page-update](#confluence-page-update) | 1.00 | Edits one line, cell or table row of a Confluence page, instead of sending the whole page back. |
+| [confluence-page-update](#confluence-page-update) | 1.01 | Edits one line, cell or table row of a Confluence page, instead of sending the whole page back. |
 
 ## confluence-page-update
 
@@ -17,6 +17,7 @@ Your AI agent can change one line, one cell or one table row of a Confluence pag
 ### What it does
 
 - Edits by line, cell or table row: replace a line or a cell, add or delete table rows, append at the end.
+- Adds the first row to an empty table, and finds a table by the heading above it when a page has several.
 - Dry run first, then reads the page back and reports anything that changed beyond the edit, with steps to undo it.
 - If someone edited the page in the meantime, Confluence refuses the update instead of overwriting their work.
 - Checks the page's hidden draft before writing, and fixes it if a write damaged it.
@@ -25,7 +26,7 @@ Your AI agent can change one line, one cell or one table row of a Confluence pag
 
 ### Install: no technical skills needed
 
-1. Download [`confluence-page-update-1.00.zip`](https://github.com/InCoB/workplace-agent-skills/releases/download/v1.00/confluence-page-update-1.00.zip).
+1. Download [`confluence-page-update-1.01.zip`](https://github.com/InCoB/workplace-agent-skills/releases/download/v1.01/confluence-page-update-1.01.zip).
 2. Give the zip to Claude or Cursor and ask:
 
    > Check this skill for security. If it is safe, install it for me.

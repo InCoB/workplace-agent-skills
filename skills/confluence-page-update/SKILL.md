@@ -5,7 +5,7 @@ description: "Use for every update of an existing Confluence page or database th
 
 # confluence-page-update
 
-**Version 1.00** (4 Nov 2026). Works in Claude and in Cursor; where they differ, the step says so. `scripts/page_view.py` carries the same version, and step 0 checks that they match.
+**Version 1.01** (16 Nov 2026). Works in Claude and in Cursor; where they differ, the step says so. `scripts/page_view.py` carries the same version, and step 0 checks that they match.
 
 How to change a Confluence page without rewriting the whole page and without loading its full html into the conversation. Built on a large page (127,834 characters of html, 64% of it ID labels), and it works for any page.
 
@@ -31,7 +31,7 @@ cp "$S/scripts/page_view.py" "$D/page_view.py"
 python3 -I "$D/page_view.py"; echo "exit $?"
 ```
 
-The last line must print the usage text, which starts with `page_view.py 1.00`, and `exit 1`. That proves the script is intact and matches this version. Any other version number means an old copy: stop and ask the person to install the skill again.
+The last line must print the usage text, which starts with `page_view.py 1.01`, and `exit 1`. That proves the script is intact and matches this version. Any other version number means an old copy: stop and ask the person to install the skill again.
 
 3. If the skill's folder is not known, search for this file. Linux (Claude): `find / -path /proc -prune -o -name SKILL.md -path '*confluence-page-update*' -print 2>/dev/null | head -1`. Mac (Cursor): `find ~ /tmp -name SKILL.md -path '*confluence-page-update*' 2>/dev/null | head -1`. Its folder is `S`. If the script is not on disk, stop and ask the person to install the skill again.
 
@@ -61,6 +61,8 @@ If the text differs before you have written anything, the draft may hold someone
 - `ids FILE KEY [KEY...]` finds table rows by their first cell (for example a ticket key, also when it is a link or smart link) and lines by their text. A heading also gives the line under it.
 - For a list item, `ids` gives the item's ID and, after it, `paragraph inside: ID`. Replace the paragraph, not the item.
 - `ids FILE :first` and `ids FILE :last` give a table's first and last data row (a row of `<th>` cells is skipped; a table without one has no header to skip, so check the cell it shows), with its first cell, so a new row can go after the last one without knowing its key. A page with more than one table gives one hit per table and exit 2: pick by looking.
+- **A table with no data rows yet** (only its header): `:first` and `:last` give the header row, marked "header row, table empty: insert after it". `insertNodeAfter` on it adds the first data row; the published page then holds it as an ordinary row under the header (tested 13 Nov 2026).
+- **A page with several tables:** every `:first` or `:last` hit names the heading the table sits under. `:last@Heading` (for example `:last@Changes`, case does not matter) gives only the table under that heading, with exit 0.
 - Exit 2 means not found or ambiguous: stop and look. Never guess an ID.
 - `node FILE ID` prints a node's exact html (one paragraph on the test page: 1,137 characters). For a row, it also shows the IDs of the paragraph inside each cell, so one cell can be edited on its own. Never `node` a whole large table: the test page's main table was 94,577 characters.
 
@@ -186,8 +188,10 @@ Test on a copy, never on the live page. `copyConfluenceContent` (contentId, titl
 - A markdown read is a quarter to a half of the html read and has no IDs: enough for checking text.
 - `executeRead` with `name: "getConfluenceContent"` takes `responseFields` (for example `["snapshotToken","metadata.version"]`), which gives a version or token check without the body.
 - A title already used in the space gets " (2)" added on create. `copyConfluenceContent` takes an explicit title.
+- A row added by `insertNodeAfter` gets a different ID in the saved page than in the dry run (13 Nov 2026): take IDs from a read after the write.
 - page_view.py takes 0.03 to 0.5 seconds a command: 0.03 to 0.10 in Claude, 0.1 to 0.5 on a Mac in Cursor. A Confluence call takes 4 to 13 seconds.
 
 ## Versions
 
+- 1.01 (16 Nov 2026): `:first` and `:last` give an empty table's header row, name the heading above each table, and take `@Heading`. New tested fact: a row added by `insertNodeAfter` gets its final ID only in the saved page.
 - 1.00 (4 Nov 2026): first public version. Built and tested on 2 and 3 Nov 2026, in Claude and in Cursor. Undo by version restore, the token rule and the connector's own rules checked live on 4 Nov 2026.

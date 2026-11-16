@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""page_view.py 1.00: read a saved Confluence page (html, detail=full) without loading the ID labels.
+"""page_view.py 1.01: read a saved Confluence page (html, detail=full) without loading the ID labels.
 
   page_view.py view FILE [SECTION]    the page (or one section, by its heading) as plain text, no IDs
   page_view.py ids FILE KEY [KEY...]  the IDs to target: table rows by first cell (:first and
-                                      :last give a table's first and last data row), lines by
+                                      :last give a table's first and last data row, or its header
+                                      row when empty; :last@Heading picks the table under that
+                                      heading), lines by
                                       their text (a heading also gives the line after it)
   page_view.py diff OLD NEW           what changed between two saved reads (removed, added,
                                       changed, moved, and format: same text, other marks,
@@ -395,16 +397,24 @@ def run(cmd, argv):
     if cmd == "ids":
         blocks, status = parse(argv[2]), 0
         for key in argv[3:]:
-            hits = []
+            hits, under = [], ""
+            pos, want = (key.split("@", 1) + [""])[:2] if key.startswith((":first", ":last")) else (key, "")
             for n, b in enumerate(blocks):
-                if b["kind"] == "table" and key in (":first", ":last"):
+                if b["kind"] == "line" and b["tag"][0] == "h":
+                    under = b["text"]
+                if b["kind"] == "table" and pos in (":first", ":last"):
+                    if want and under.lower() != want.lower():
+                        continue
                     data = [r for r in b["rows"] if not r["header"]]
                     if data:
-                        r = data[0] if key == ":first" else data[-1]
-                        hits.append(f"{key}\trow\t{r['id']}\t{(r['cells'] or [''])[0]}")
+                        r = data[0] if pos == ":first" else data[-1]
+                        hits.append(f"{key}\trow\t{r['id']}\t{(r['cells'] or [''])[0]}\tunder: {under or '(no heading)'}")
+                    elif b["rows"]:
+                        r = b["rows"][-1]
+                        hits.append(f"{key}\theader row, table empty: insert after it\t{r['id']}\tunder: {under or '(no heading)'}")
                 elif b["kind"] == "table":
                     hits += [f"{key}\trow\t{r['id']}" for r in b["rows"] if r["cells"] and key in (r["cells"][0], cell_key(r["cells"][0]))]
-                elif key not in (":first", ":last") and (b["text"] == key or b["text"].startswith(key + ":") or b["text"].startswith(key + " ")):
+                elif pos not in (":first", ":last") and (b["text"] == key or b["text"].startswith(key + ":") or b["text"].startswith(key + " ")):
                     pid = f"\tparagraph inside: {b['pid']}" if b.get("pid") else ""
                     hits.append(f"{key}\tline\t{b['id']}\t{b['text'][:60]}{pid}")
                     nxt = blocks[n + 1] if n + 1 < len(blocks) else None
