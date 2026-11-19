@@ -6,7 +6,7 @@ Agent skills for the tools teams use every day, like Confluence. Each one tested
 
 | Skill | Version | What it does |
 | --- | --- | --- |
-| [confluence-pro](#confluence-pro) | 1.01 | Edits one line, cell or table row of a Confluence page instead of sending the whole page back, and reads or sets who can view or edit it. |
+| [confluence-pro](#confluence-pro) | 1.02 | Edits one line, cell or table row of a Confluence page instead of sending the whole page back, and reads or sets who can view or edit it. |
 
 ## confluence-pro
 
@@ -29,7 +29,7 @@ Your AI agent can change one line, one cell or one table row of a Confluence pag
 
 ### Install: no technical skills needed
 
-1. Download [`confluence-pro-1.01.zip`](https://github.com/InCoB/workplace-agent-skills/releases/download/v1.01/confluence-pro-1.01.zip).
+1. Download [`confluence-pro-1.02.zip`](https://github.com/InCoB/workplace-agent-skills/releases/download/v1.02/confluence-pro-1.02.zip).
 2. Give the zip to Claude or Cursor and ask:
 
    > Check this skill for security. If it is safe, install it for me.

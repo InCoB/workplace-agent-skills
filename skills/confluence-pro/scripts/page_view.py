@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""page_view.py 1.01: read a saved Confluence page (html, detail=full) without loading the ID labels.
+"""page_view.py 1.02: read a saved Confluence page (html, detail=full) without loading the ID labels.
 
   page_view.py view FILE [SECTION]    the page (or one section, by its heading) as plain text, no IDs
   page_view.py ids FILE KEY [KEY...]  the IDs to target: table rows by first cell (:first and

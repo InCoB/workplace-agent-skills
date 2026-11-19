@@ -5,7 +5,7 @@ description: "Use for every change to existing Confluence content and its access
 
 # confluence-pro
 
-**Version 1.01** (13 Nov 2026). Formerly `confluence-page-update`. Works in Claude and in Cursor; where they differ, the step says so. `scripts/page_view.py` carries the same version, and step 0 checks that they match.
+**Version 1.02** (19 Nov 2026). Formerly `confluence-page-update`. Works in Claude and in Cursor; where they differ, the step says so. `scripts/page_view.py` carries the same version, and step 0 checks that they match.
 
 How to change a Confluence page without rewriting the whole page and without loading its full html into the conversation. Built on a large page (127,834 characters of html, 64% of it ID labels), and it works for any page.
 
@@ -31,7 +31,7 @@ cp "$S/scripts/page_view.py" "$D/page_view.py"
 python3 -I "$D/page_view.py"; echo "exit $?"
 ```
 
-The last line must print the usage text, which starts with `page_view.py 1.01`, and `exit 1`. That proves the script is intact and matches this version. Any other version number means an old copy: stop and ask the person to install the skill again.
+The last line must print the usage text, which starts with `page_view.py 1.02`, and `exit 1`. That proves the script is intact and matches this version. Any other version number means an old copy: stop and ask the person to install the skill again.
 
 3. If the skill's folder is not known, search for this file. Linux (Claude): `find / -path /proc -prune -o -name SKILL.md -path '*confluence-pro*' -print 2>/dev/null | head -1`. Mac (Cursor): `find ~ /tmp -name SKILL.md -path '*confluence-pro*' 2>/dev/null | head -1`. Its folder is `S`. If the script is not on disk, stop and ask the person to install the skill again.
 
@@ -49,7 +49,7 @@ The read's `metadata.hasSpaceInstructions` says whether the space has authoring 
 
 **Before the first write of a run, check the draft.** Every page has one hidden shared draft: the editor's live session (see "Drafts" below). Read the page a second time with `draft: true` (DRAFT). `textdiff FILE DRAFT` must say "same text". Use `textdiff`, not `diff`: the draft can carry its own IDs, and then `diff` reports every node as removed and added even when the text is identical. For a page that came back inline, read both as markdown (`content_format: "markdown"`, a quarter to a half of the size, no IDs) and compare the two texts.
 
-If the text differs before you have written anything, the draft may hold someone's unpublished work. Stop and ask the person before writing, even if they asked you to save: say what differs and let them decide. Do not give the draft's age: its `createdAt` can be the moment of your own read (see "Drafts"). If they want the published text kept, fix the draft yourself (see "Fix a draft"); never send them to the editor to discard it.
+If the text differs before you have written anything, the draft may hold someone's unpublished work. Stop and ask the person before writing, even if they asked you to save: say what differs and let them decide. Do not give the draft's age: its `createdAt` can be the moment of your own read (see "Drafts"). If they want the published text kept, fix the draft yourself (see "Fix a draft"); never send them to the editor to discard it, except as "Fix a draft" allows when the connector refuses the fix.
 
 ## Step 2: look
 
@@ -143,7 +143,7 @@ Tested on a Confluence Cloud site, 2 and 3 Nov 2026.
 - What a publish does to the draft varies. Three outcomes were seen: the draft was replaced by the published page (2 Nov, a draft made through the tool); it was left untouched (a draft from May that survived 11 publishes); and the change was merged into the draft at the wrong place, so the draft kept the old sentence and the new words landed inside another paragraph (a how-to page, 3 Nov). Later publishes merge into the draft cleanly but leave the earlier damage in place.
 - A draft that differs from the page is what the next person to click Edit gets, and publishing it from the editor makes it live.
 - The draft carries its own IDs (often 12 characters where the page has 36), so compare with `textdiff` or markdown, never with `diff`.
-- Never ask the person to discard a draft in the editor. Fix it with the connector (next section).
+- Never ask the person to discard a draft in the editor. Fix it with the connector (next section). The one exception is a fix the connector refuses twice ("If the draft write is refused").
 
 ## Fix a draft
 
@@ -156,6 +156,19 @@ A write to the draft alone: `updateConfluenceContent` with `draft: true` and the
 5. Read the draft again: `textdiff FILE DRAFT2` must say "same text". Read the page too: its version must not have changed.
 
 If most of the page differs, for example an old page sitting in the draft, stop and say so: that needs a whole-body draft write, which this skill does not cover.
+
+### If the draft write is refused
+
+A draft write can come back `snapshot_stale` again and again: on a page with a live macro (seen on a space homepage with a Recent updates macro, 19 Nov 2026), the draft's `d1:` token can change between the read and the write.
+
+1. Read the draft again and send the same fix at once with the new `d1:` token, with no other call in between. One retry only.
+2. Refused again: stop writing. Compare the draft with the published version from before your write (step 1's FILE): `textdiff FILE DRAFT`, then `diff` of the two reads for stored values.
+3. The visible text is the same and only a macro's stored values differ (for example `_parentId` in a Recent updates macro, which Confluence sets itself): the draft holds nobody's work. Tell the person, in one line each:
+   - The published page has the change; the editor's draft does not, so whoever clicks Edit next and publishes would remove it.
+   - The fix: open the page, click Edit, open the ••• menu and choose the option that reverts to the published version or discards unpublished changes, then close the editor without publishing. If that option is not there: check that the new text is in the editor, add it if not, then Publish.
+   An agent with browser control may do this for the person, on their yes.
+4. Any visible text differs: someone's unpublished work may be in the draft. Stop, show the person the lines that differ, and let them decide. Never discard it for them.
+5. Read the draft again afterwards: `textdiff FILE2 DRAFT` must say "same text", where FILE2 is the published page after your write.
 
 ## Rename or move a page
 
@@ -226,6 +239,8 @@ Test on a copy, never on the live page. `copyConfluenceContent` (contentId, titl
 - page_view.py takes 0.03 to 0.5 seconds a command: 0.03 to 0.10 in Claude, 0.1 to 0.5 on a Mac in Cursor. A Confluence call takes 4 to 13 seconds.
 
 ## Versions
+
+- 1.02 (19 Nov 2026): "If the draft write is refused": one retry with a fresh `d1:` token, then a check that only macro values differ, then the editor's discard as the one exception to "never send them to the editor".
 
 - 1.01 (13 Nov 2026): renamed from `confluence-page-update`. Restrictions section (reads and refusals tested; setting not yet tested). `:first` and `:last` give an empty table's header row, name the heading above each table, and take `@Heading`.
 
